@@ -1,16 +1,20 @@
-import http from "node:http";
+import { createApp } from "./http/app.mjs";
 
-export function createServer() {
-  return http.createServer((request, response) => {
-    if (request.url !== "/health") {
-      response.writeHead(404).end();
-      return;
-    }
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ status: "ok" }));
+const PORT = Number(process.env.PORT ?? 8000);
+const HOST = process.env.HOST ?? "127.0.0.1";
+const STORE_FILE = process.env.STORE_FILE ?? "data/events.jsonl";
+
+const { server, store } = await createApp({ storeFile: STORE_FILE });
+
+server.listen(PORT, HOST, () => {
+  console.log(`巡展路由服务已启动：http://${HOST}:${PORT}（事件日志 ${STORE_FILE}）`);
+});
+
+const shutdown = () => {
+  server.close(() => {
+    store.close();
+    process.exit(0);
   });
-}
-
-if (process.argv[1] === new URL(import.meta.url).pathname) {
-  createServer().listen(8000, "127.0.0.1");
-}
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
